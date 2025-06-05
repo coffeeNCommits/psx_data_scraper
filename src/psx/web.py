@@ -54,12 +54,17 @@ class DataReader:
         return pd.read_json(self.__symbols)
 
     def stocks(self,
-               tickers: Union[str, list],
+               tickers: Union[str, list, None],
                start: date,
                end: date) -> pd.DataFrame:
+        """Return OHLCV data for one or more tickers.
+
+        If ``tickers`` is ``None`` all symbols returned by :meth:`tickers`
+        with ``isDebt`` equal to ``False`` are downloaded.
         """
-        Main public API – returns an OHLCV DataFrame for one or more tickers.
-        """
+        if tickers is None:
+            universe = self.tickers()
+            tickers = universe.loc[~universe["isDebt"], "symbol"].tolist()
         tickers = [tickers] if isinstance(tickers, str) else tickers
         dates   = self.daterange(start, end)
 
@@ -103,9 +108,10 @@ class DataReader:
 
     def _download_single_month(self, symbol: str, dt: date) -> pd.DataFrame:
         post = {"month": dt.month, "year": dt.year, "symbol": symbol}
-        with self.session.post(self.__history, data=post, timeout=30) as r:
-            soup = parser(r.text, "html.parser")
-            return self._html_to_frame(soup)
+        r = self.session.post(self.__history, data=post, timeout=30)
+        r.raise_for_status()
+        soup = parser(r.text, "html.parser")
+        return self._html_to_frame(soup)
 
     # —————————————————————————————— HTML → DataFrame utilities ——— #
 
@@ -135,7 +141,16 @@ class DataReader:
 
     @staticmethod
     def daterange(start: date, end: date) -> list:
-        """Return list of the first day of every month in [start, end]."""
+        """Return list of the first day of every month in [start, end].
+
+        Raises
+        ------
+        ValueError
+            If ``end`` is earlier than ``start``.
+        """
+        if end < start:
+            raise ValueError("end date must not be earlier than start date")
+
         months = (end.year - start.year) * 12 + (end.month - start.month)
         anchors = [datetime(start.year, start.month, 1)]
         for i in range(months):
@@ -149,11 +164,11 @@ class DataReader:
 
         df = pd.concat(monthly_frames).sort_index()
         df.rename(columns=str.title, inplace=True)      # OPEN→Open etc.
-        df.Volume = df.Volume.str.replace(",", "")      # "1,234" → "1234"
+        df.Volume = df.Volume.str.replace(",", "", regex=False)  # "1,234" → "1234"
 
         # numeric coercion
         for col in ("Open", "High", "Low", "Close", "Volume"):
-            df[col] = df[col].str.replace(",", "").astype(np.float64)
+            df[col] = df[col].str.replace(",", "", regex=False).astype(np.float64)
         return df
 
 # ───────────────────────────────────────────── runner / demo ——— #

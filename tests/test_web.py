@@ -18,11 +18,9 @@ def test_daterange():
     ]
     assert result == expected
 
-
 def test_daterange_invalid():
     with pytest.raises(ValueError):
         DataReader.daterange(date(2024, 3, 1), date(2024, 1, 1))
-
 
 def make_sample_html():
     return """
@@ -92,7 +90,6 @@ def test_psx_exports():
     assert isinstance(psx.stocks.__self__, DataReader)
     assert psx.stocks.__self__.verbose is False
     assert callable(psx.tickers)
-
 
 def test_stocks_all(monkeypatch):
     dr = DataReader(verbose=False)

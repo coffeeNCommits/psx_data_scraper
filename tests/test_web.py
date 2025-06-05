@@ -18,6 +18,9 @@ def test_daterange():
     ]
     assert result == expected
 
+def test_daterange_invalid():
+    with pytest.raises(ValueError):
+        DataReader.daterange(date(2024, 3, 1), date(2024, 1, 1))
 
 def make_sample_html():
     return """
@@ -87,3 +90,24 @@ def test_psx_exports():
     assert isinstance(psx.stocks.__self__, DataReader)
     assert psx.stocks.__self__.verbose is False
     assert callable(psx.tickers)
+
+def test_stocks_all(monkeypatch):
+    dr = DataReader(verbose=False)
+    tickers_df = pd.DataFrame([
+        {"symbol": "OGDC", "isDebt": False},
+        {"symbol": "BOND", "isDebt": True},
+        {"symbol": "LUCK", "isDebt": False},
+    ])
+
+    monkeypatch.setattr(dr, "tickers", lambda: tickers_df)
+
+    def fake_get_psx_data(symbol, dates):
+        idx = [datetime(2024, 1, 1)]
+        data = {c: [1] for c in DataReader.headers[1:]}
+        return pd.DataFrame(data, index=idx)
+
+    monkeypatch.setattr(dr, "get_psx_data", fake_get_psx_data)
+
+    df = dr.stocks(None, date(2024, 1, 1), date(2024, 1, 1))
+    assert set(df.index.get_level_values("Ticker")) == {"OGDC", "LUCK"}
+    assert len(df) == 2

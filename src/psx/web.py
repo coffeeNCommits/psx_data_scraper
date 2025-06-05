@@ -54,12 +54,17 @@ class DataReader:
         return pd.read_json(self.__symbols)
 
     def stocks(self,
-               tickers: Union[str, list],
+               tickers: Union[str, list, None],
                start: date,
                end: date) -> pd.DataFrame:
+        """Return OHLCV data for one or more tickers.
+
+        If ``tickers`` is ``None`` all symbols returned by :meth:`tickers`
+        with ``isDebt`` equal to ``False`` are downloaded.
         """
-        Main public API – returns an OHLCV DataFrame for one or more tickers.
-        """
+        if tickers is None:
+            universe = self.tickers()
+            tickers = universe.loc[~universe["isDebt"], "symbol"].tolist()
         tickers = [tickers] if isinstance(tickers, str) else tickers
         dates   = self.daterange(start, end)
 
@@ -136,7 +141,16 @@ class DataReader:
 
     @staticmethod
     def daterange(start: date, end: date) -> list:
-        """Return list of the first day of every month in [start, end]."""
+        """Return list of the first day of every month in [start, end].
+
+        Raises
+        ------
+        ValueError
+            If ``end`` is earlier than ``start``.
+        """
+        if end < start:
+            raise ValueError("end date must not be earlier than start date")
+
         months = (end.year - start.year) * 12 + (end.month - start.month)
         anchors = [datetime(start.year, start.month, 1)]
         for i in range(months):

@@ -103,9 +103,10 @@ class DataReader:
 
     def _download_single_month(self, symbol: str, dt: date) -> pd.DataFrame:
         post = {"month": dt.month, "year": dt.year, "symbol": symbol}
-        with self.session.post(self.__history, data=post, timeout=30) as r:
-            soup = parser(r.text, "html.parser")
-            return self._html_to_frame(soup)
+        r = self.session.post(self.__history, data=post, timeout=30)
+        r.raise_for_status()
+        soup = parser(r.text, "html.parser")
+        return self._html_to_frame(soup)
 
     # —————————————————————————————— HTML → DataFrame utilities ——— #
 
@@ -149,11 +150,11 @@ class DataReader:
 
         df = pd.concat(monthly_frames).sort_index()
         df.rename(columns=str.title, inplace=True)      # OPEN→Open etc.
-        df.Volume = df.Volume.str.replace(",", "")      # "1,234" → "1234"
+        df.Volume = df.Volume.str.replace(",", "", regex=False)  # "1,234" → "1234"
 
         # numeric coercion
         for col in ("Open", "High", "Low", "Close", "Volume"):
-            df[col] = df[col].str.replace(",", "").astype(np.float64)
+            df[col] = df[col].str.replace(",", "", regex=False).astype(np.float64)
         return df
 
 # ───────────────────────────────────────────── runner / demo ——— #

@@ -1,4 +1,6 @@
 import io
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
 import requests
 from bs4 import BeautifulSoup as parser
 from pdfminer.high_level import extract_text
@@ -13,11 +15,34 @@ def get_page(session: requests.Session, url: str):
     return parser(response.text, "html.parser")
 
 
-def extract_pdf(session: requests.Session, url: str) -> str:
-    """Download a PDF and extract its text."""
+def extract_pdf(
+    session: requests.Session,
+    url: str,
+    *,
+    parse_timeout: int = 15,
+    maxpages: int = 20,
+) -> str:
+    """Download a PDF and extract its text.
+
+    A separate worker thread is used to guard against PDFs that hang
+    ``pdfminer`` during parsing.  If parsing exceeds ``parse_timeout`` seconds
+    a ``RuntimeError`` is raised.
+    """
+
     response = session.get(url, timeout=30)
     response.raise_for_status()
-    return extract_text(io.BytesIO(response.content))
+    buf = io.BytesIO(response.content)
+
+    def parse():
+        return extract_text(buf, maxpages=maxpages)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(parse)
+        try:
+            return future.result(timeout=parse_timeout)
+        except FuturesTimeout:
+            future.cancel()
+            raise RuntimeError(f"PDF parse timed out for {url}")
 
 
 def extract_view(session: requests.Session, url: str) -> str:

@@ -116,6 +116,7 @@ class DataReader:
             next_link = tab.find("a", class_="next")
             next_url = urljoin(base, next_link["href"]) if next_link else None
 
+        os.makedirs(save_dir, exist_ok=True)
         path = os.path.join(save_dir, f"{symbol}_{tab_name.replace(' ', '_')}_reports.json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(results, fh, indent=2)

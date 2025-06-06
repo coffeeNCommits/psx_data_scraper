@@ -120,6 +120,7 @@ class DataReader:
 
             else:
                 soup = self._get_page(next_url)
+
                 tab = soup.find(id=tab_name.replace(" ", "")) or soup
 
                 for row in tab.select("tr"):

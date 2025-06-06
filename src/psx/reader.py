@@ -69,52 +69,97 @@ class DataReader:
         years: int = 5,
         save_dir: str = ".",
     ) -> list:
-        """Scrape company announcements from the PSX site."""
+        """Scrape company announcements from the PSX site.
+
+        If ``tab_name`` is ``"Financial Reports"`` the function scrapes the
+        ``Financial Reports`` table which only contains PDF links.  For all
+        other tabs the function falls back to the standard Announcements
+        section.
+        """
+
         cutoff = date.today() - relativedelta(years=years)
         base = f"https://dps.psx.com.pk/company/{symbol}"
         results = []
         next_url = base
 
         while next_url:
-            soup = self._get_page(next_url)
-            tab = soup.find(id=tab_name.replace(" ", "")) or soup
+            if tab_name == "Financial Reports":
+                soup = self._get_page_dynamic(next_url)
+                tab = soup.find(id="reports") or soup
+                for row in tab.select("tbody tr"):
+                    cells = row.find_all("td")
+                    if len(cells) < 3:
+                        continue
 
-            for row in tab.select("tr"):
-                title_el = row.find(class_="title")
-                date_el = row.find(class_="date")
-                if not title_el or not date_el:
-                    continue
+                    when = date_parser.parse(cells[2].get_text(strip=True)).date()
+                    if when < cutoff:
+                        next_url = None
+                        break
 
-                when = date_parser.parse(date_el.get_text(strip=True)).date()
-                if when < cutoff:
-                    next_url = None
-                    break
+                    link = cells[0].find("a")
+                    if not link:
+                        continue
 
-                pdf_link = row.find("a", class_="pdf")
-                view_link = row.find("a", class_="view")
-                content, source = "", ""
-
-                if pdf_link is not None:
                     try:
-                        content = self._extract_pdf(urljoin(base, pdf_link["href"]))
+                        content = self._extract_pdf(urljoin(base, link["href"]))
                         source = "PDF"
                     except Exception:
-                        if view_link is not None:
-                            content = self._extract_view(urljoin(base, view_link["href"]))
-                            source = "View"
-                elif view_link is not None:
-                    content = self._extract_view(urljoin(base, view_link["href"]))
-                    source = "View"
+                        content, source = "", ""
 
-                results.append({
-                    "title": title_el.get_text(strip=True),
-                    "date": when.isoformat(),
-                    "source": source,
-                    "content": content,
-                })
+                    results.append(
+                        {
+                            "title": link.get_text(strip=True),
+                            "date": when.isoformat(),
+                            "source": source,
+                            "content": content,
+                        }
+                    )
 
-            next_link = tab.find("a", class_="next")
-            next_url = urljoin(base, next_link["href"]) if next_link else None
+                # financial reports do not provide proper pagination links
+                next_url = None
+
+            else:
+                soup = self._get_page(next_url)
+                tab = soup.find(id=tab_name.replace(" ", "")) or soup
+
+                for row in tab.select("tr"):
+                    title_el = row.find(class_="title")
+                    date_el = row.find(class_="date")
+                    if not title_el or not date_el:
+                        continue
+
+                    when = date_parser.parse(date_el.get_text(strip=True)).date()
+                    if when < cutoff:
+                        next_url = None
+                        break
+
+                    pdf_link = row.find("a", class_="pdf")
+                    view_link = row.find("a", class_="view")
+                    content, source = "", ""
+
+                    if pdf_link is not None:
+                        try:
+                            content = self._extract_pdf(urljoin(base, pdf_link["href"]))
+                            source = "PDF"
+                        except Exception:
+                            if view_link is not None:
+                                content = self._extract_view(urljoin(base, view_link["href"]))
+                                source = "View"
+                    elif view_link is not None:
+                        content = self._extract_view(urljoin(base, view_link["href"]))
+                        source = "View"
+
+                    results.append(
+                        {
+                            "title": title_el.get_text(strip=True),
+                            "date": when.isoformat(),
+                            "source": source,
+                            "content": content,
+                        }
+                    )
+
+                next_link = tab.find("a", class_="next")
+                next_url = urljoin(base, next_link["href"]) if next_link else None
 
         os.makedirs(save_dir, exist_ok=True)
         path = os.path.join(save_dir, f"{symbol}_{tab_name.replace(' ', '_')}_reports.json")
@@ -156,6 +201,9 @@ class DataReader:
     # Wrappers for backwards compatibility and tests
     def _get_page(self, url: str):
         return network.get_page(self.session, url)
+
+    def _get_page_dynamic(self, url: str):
+        return network.get_page_dynamic(url)
 
     def _extract_pdf(self, url: str) -> str:
         return network.extract_pdf(self.session, url)

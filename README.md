@@ -20,6 +20,7 @@ This version includes bug fixes and additional improvements for long-term usabil
 - Built-in **multi-threading** for fast concurrent data fetching
 - Chunked requests for efficiency and server-friendliness
 - Fully open-source and ready for extension
+- Gather company announcements via `psx.reports`
 - Convenient `psx.stocks` and `psx.tickers` helpers
 
 ---
@@ -35,7 +36,7 @@ pip install -r requirements.txt
 
 🚀 Usage
 
-from psx import stocks, tickers
+from psx import stocks, tickers, reports
 from datetime import date
 
 # Single stock example
@@ -50,7 +51,10 @@ print(df_multi.head())
 ticker_list = tickers()
 print(ticker_list.head())
 
+# Fetch recent announcements
+report_list = reports("OGDC")
 ```
+
 
 📊 Example Output
 

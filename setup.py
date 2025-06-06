@@ -41,5 +41,6 @@ setup(
         "numpy",
         "python-dateutil",
         "pytest",
+        "pdfminer.six",
     ],
 )

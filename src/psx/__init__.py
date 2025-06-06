@@ -1,4 +1,4 @@
-from .web import DataReader
+from .reader import DataReader
 
 __version__ = "1.0.0"
 
@@ -8,3 +8,4 @@ stocks = _data_reader.stocks
 
 tickers = _data_reader.tickers
 
+reports = _data_reader.reports

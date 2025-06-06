@@ -83,9 +83,8 @@ class DataReader:
         next_url = base
 
         while next_url:
-            soup = self._get_page(next_url)
-
             if tab_name == "Financial Reports":
+                soup = self._get_page_dynamic(next_url)
                 tab = soup.find(id="reports") or soup
                 for row in tab.select("tbody tr"):
                     cells = row.find_all("td")
@@ -120,6 +119,8 @@ class DataReader:
                 next_url = None
 
             else:
+                soup = self._get_page(next_url)
+
                 tab = soup.find(id=tab_name.replace(" ", "")) or soup
 
                 for row in tab.select("tr"):
@@ -201,6 +202,9 @@ class DataReader:
     # Wrappers for backwards compatibility and tests
     def _get_page(self, url: str):
         return network.get_page(self.session, url)
+
+    def _get_page_dynamic(self, url: str):
+        return network.get_page_dynamic(url)
 
     def _extract_pdf(self, url: str) -> str:
         return network.extract_pdf(self.session, url)

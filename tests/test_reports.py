@@ -49,7 +49,7 @@ def test_financial_reports_parsing(tmp_path):
         assert url.endswith("file.pdf")
         return "PDF TEXT"
 
-    dr._get_page = fake_get_page
+    dr._get_page_dynamic = fake_get_page
     dr._extract_pdf = fake_extract_pdf
 
     results = dr.reports("OGDC", tab_name="Financial Reports", years=1, save_dir=tmp_path)

@@ -22,3 +22,46 @@ def test_reports_live(tmp_path):
     assert out_file.exists()
     data = json.loads(out_file.read_text())
     assert len(data) == len(results)
+
+
+def test_financial_reports_parsing(tmp_path):
+    html = """
+    <div id='reports'>
+      <table>
+        <tbody class='tbl__body'>
+          <tr>
+            <td><a href='file.pdf'>Quarterly</a></td>
+            <td>2024-12-31</td>
+            <td>2025-02-28</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    """
+
+    dr = DataReader(verbose=False)
+
+    def fake_get_page(url):
+        from bs4 import BeautifulSoup
+        return BeautifulSoup(html, "html.parser")
+
+    def fake_extract_pdf(url):
+        assert url.endswith("file.pdf")
+        return "PDF TEXT"
+
+    dr._get_page_dynamic = fake_get_page
+    dr._extract_pdf = fake_extract_pdf
+
+    results = dr.reports("OGDC", tab_name="Financial Reports", years=1, save_dir=tmp_path)
+
+    expected = [{
+        "title": "Quarterly",
+        "date": "2025-02-28",
+        "source": "PDF",
+        "content": "PDF TEXT",
+    }]
+
+    assert results == expected
+
+    out_file = tmp_path / "OGDC_Financial_Reports_reports.json"
+    assert json.loads(out_file.read_text()) == results

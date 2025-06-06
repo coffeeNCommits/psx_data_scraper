@@ -20,6 +20,8 @@ This version includes bug fixes and additional improvements for long-term usabil
 - Built-in **multi-threading** for fast concurrent data fetching
 - Chunked requests for efficiency and server-friendliness
 - Fully open-source and ready for extension
+- Gather company announcements via `psx.reports`
+- Convenient `psx.stocks` and `psx.tickers` helpers
 
 ---
 
@@ -34,25 +36,25 @@ pip install -r requirements.txt
 
 🚀 Usage
 
-from psx_scraper.get_psx_data import DataReader
+from psx import stocks, tickers, reports
 from datetime import date
 
-reader = DataReader()
-
 # Single stock example
-df = reader.stocks("OGDC", start=date(2022, 1, 1), end=date(2023, 1, 1))
+df = stocks("OGDC", start=date(2022, 1, 1), end=date(2023, 1, 1))
 print(df.head())
 
 # Multiple stocks
-df_multi = reader.stocks(["OGDC", "LUCK"], start=date(2022, 1, 1), end=date(2023, 1, 1))
+df_multi = stocks(["OGDC", "LUCK"], start=date(2022, 1, 1), end=date(2023, 1, 1))
 print(df_multi.head())
 
-To get a list of current PSX tickers:
+# Get a list of current PSX tickers
+ticker_list = tickers()
+print(ticker_list.head())
 
-tickers = reader.tickers()
-print(tickers.head())
-
+# Fetch recent announcements
+report_list = reports("OGDC")
 ```
+
 
 📊 Example Output
 
@@ -60,6 +62,16 @@ Sample structure of returned DataFrame:
 
 Date	Open	High	Low	Close	Volume	Symbol
 2022-01-03	123.0	125.5	121.0	124.0	4,500,000	OGDC
+
+
+## 🧪 Testing
+
+Run the automated test suite with:
+
+```bash
+python -m compileall -q src
+PYTHONPATH=src pytest -q
+```
 
 🧑‍💻 Author
 Maintainer: coffeeNCommits

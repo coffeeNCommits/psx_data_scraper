@@ -9,4 +9,3 @@ stocks = _data_reader.stocks
 tickers = _data_reader.tickers
 
 reports = _data_reader.reports
-
